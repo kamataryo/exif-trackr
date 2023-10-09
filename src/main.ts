@@ -24,6 +24,10 @@ export class Reader {
     private opts: Options,
   ) {}
 
+  /**
+   * Read exif from images
+   * @param dir reading directory
+   */
   public async read(dir = this.input_dir): Promise<void> {
     this.metadatas.splice(0, this.metadatas.length);
 
@@ -37,16 +41,20 @@ export class Reader {
         }
         continue;
       } else {
-        const metadata = await this.read_exif(dir_path);
-        if(metadata.date !== null && metadata.lat !== null && metadata.lng !== null) {
-          this.metadatas.push(metadata as Metadata)
+        try {
+          const metadata = await this.read_exif(dir_path);
+          if(metadata.date !== null && metadata.lat !== null && metadata.lng !== null) {
+            this.metadatas.push(metadata as Metadata)
+          }
+        } catch (error) {
+          process.stderr.write(`[skipping with error] ${dir_path}\n`)
         }
       }
     }
     this.metadatas.sort((a, b) => a.date.getTime() - b.date.getTime());
   }
 
-  public async write(): Promise<void> {
+  public async write(writeStream: NodeJS.WriteStream = process.stdout): Promise<void> {
     let result = '';
     switch(this.opts.format) {
       case 'gpx': {
@@ -87,7 +95,7 @@ export class Reader {
         break;
       }
     }
-    process.stdout.write(result + '\n');
+    writeStream.write(result + '\n');
   }
 
   private async read_exif(file_path: string): Promise<Metadata | {
