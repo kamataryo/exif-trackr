@@ -18,6 +18,10 @@ type Options = {
 
 export class Reader {
   public metadatas: Metadata[] = [];
+  private stat = {
+    total: 0,
+    processed: 0,
+  }
 
   constructor(
     private input_dir: string,
@@ -30,8 +34,11 @@ export class Reader {
    */
   public async read(dir = this.input_dir): Promise<void> {
     this.metadatas.splice(0, this.metadatas.length);
+    this.stat.total = 0;
+    this.stat.processed = 0;
 
     const dirnames = await fs.readdir(dir);
+    this.stat.total += dirnames.length;
     for (const dirname of dirnames) {
       const dir_path = path.join(dir, dirname);
       const stat = await fs.stat(dir_path);
@@ -39,7 +46,6 @@ export class Reader {
         if(this.opts.recursive) {
           await this.read(dir_path);
         }
-        continue;
       } else {
         try {
           const metadata = await this.read_exif(dir_path);
@@ -50,7 +56,12 @@ export class Reader {
           process.stderr.write(`[skipping with error] ${dir_path}\n`)
         }
       }
+      this.stat.processed++;
+      if(this.stat.processed % 100 === 0) {
+        process.stderr.write(`[progress] ${this.stat.processed}/${this.stat.total}\n`)
+      }
     }
+
     this.metadatas.sort((a, b) => a.date.getTime() - b.date.getTime());
   }
 
