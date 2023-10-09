@@ -3,6 +3,7 @@ import path from 'node:path'
 import exifr from 'exifr'
 
 export type Format = 'gpx' | 'geojson';
+
 type Metadata = {
   date: Date,
   lat: number,
@@ -12,6 +13,7 @@ type Metadata = {
 
 type Options = {
   format: Format,
+  recursive: boolean,
 }
 
 export class Reader {
@@ -22,15 +24,23 @@ export class Reader {
     private opts: Options,
   ) {}
 
-  public async read(): Promise<void> {
+  public async read(dir = this.input_dir): Promise<void> {
     this.metadatas.splice(0, this.metadatas.length);
 
-    const dirents = await fs.readdir(this.input_dir, { withFileTypes: true });
-    for (const dirent of dirents) {
-      const image_path = path.join(this.input_dir, dirent.name);
-      const metadata = await this.read_exif(image_path);
-      if(metadata.date !== null && metadata.lat !== null && metadata.lng !== null) {
-        this.metadatas.push(metadata as Metadata)
+    const dirnames = await fs.readdir(dir);
+    for (const dirname of dirnames) {
+      const dir_path = path.join(dir, dirname);
+      const stat = await fs.stat(dir_path);
+      if(stat.isDirectory()) {
+        if(this.opts.recursive) {
+          await this.read(dir_path);
+        }
+        continue;
+      } else {
+        const metadata = await this.read_exif(dir_path);
+        if(metadata.date !== null && metadata.lat !== null && metadata.lng !== null) {
+          this.metadatas.push(metadata as Metadata)
+        }
       }
     }
     this.metadatas.sort((a, b) => a.date.getTime() - b.date.getTime());
