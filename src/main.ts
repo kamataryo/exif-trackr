@@ -33,12 +33,9 @@ export class Reader {
    * @param dir reading directory
    */
   public async read(dir = this.input_dir): Promise<void> {
-    this.metadatas.splice(0, this.metadatas.length);
-    this.stat.total = 0;
-    this.stat.processed = 0;
-
     const dirnames = await fs.readdir(dir);
     this.stat.total += dirnames.length;
+
     for (const dirname of dirnames) {
       const dir_path = path.join(dir, dirname);
       const stat = await fs.stat(dir_path);
